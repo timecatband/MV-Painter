@@ -87,6 +87,12 @@ render.resolution_percentage = 100
 render.threads_mode = 'FIXED'  # 使用固定线程数模式
 render.threads = 32  # 设置线程数
 
+cycles_prefs = bpy.context.preferences.addons["cycles"].preferences
+cycles_prefs.compute_device_type = "CUDA"
+cuda_devices = cycles_prefs.get_devices_for_type("CUDA")
+for dev in cuda_devices:
+    dev.use = True
+
 scene.cycles.device = "GPU"
 scene.cycles.samples = 1   # 128
 scene.cycles.diffuse_bounces = 1

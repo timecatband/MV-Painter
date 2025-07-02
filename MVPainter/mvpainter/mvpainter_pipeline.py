@@ -41,6 +41,7 @@ from transformers import (
 from torchvision.transforms import v2
 from torchvision import transforms
 from huggingface_hub import hf_hub_download
+import gc
 
 from PIL import Image
 def to_rgb_image(maybe_rgba: Image.Image):
@@ -343,6 +344,7 @@ class MVPainter_Pipeline(diffusers.DiffusionPipeline):
         self.register_to_config( ramping_coefficients = ramping_coefficients)
         self.vae_scale_factor = 2 ** (len(self.vae.config.block_out_channels) - 1)
         self.image_processor = VaeImageProcessor(vae_scale_factor=self.vae_scale_factor)
+        #self.vae.enable_slicing()
         self.default_sample_size = self.unet.config.sample_size 
         self.watermark = None 
         self.prepare_init = False
@@ -692,6 +694,14 @@ class MVPainter_Pipeline(diffusers.DiffusionPipeline):
                     progress_bar.update()
         
         latents = unscale_latents(latents)
+        del prompt_embeds, add_text_embeds, add_time_ids, cond_lat
+        del negative_lat
+        del depth_image, depth_image_2
+        del extra_step_kwargs, noise_pred, latent_model_input
+        del cond_image, image_vae, image_clip
+        del global_embeds, global_embeds_1, global_embeds_2, ramp
+        gc.collect()
+        torch.cuda.empty_cache()
 
         if output_type=="latent":
             image = latents

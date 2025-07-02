@@ -90,6 +90,5 @@ spconv
 OpenEXR==3.2.4
 rembg
 onnxruntime
-bpy==3.6.0
 xatlas
 pygltflib

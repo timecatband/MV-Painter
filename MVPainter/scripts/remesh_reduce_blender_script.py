@@ -34,7 +34,7 @@ def reduce_mesh(fname, decimate_type='DECIMATE', target_vertices=5000, smooth_ty
     name = fname.split('/')[-1]
     input_obj_path = fname #tmppath or fname
     if fname.endswith('.obj'):
-        bpy.ops.import_scene.obj(filepath=input_obj_path)
+        bpy.ops.wm.obj_import(filepath=input_obj_path)
     elif fname.endswith('.glb'):
         bpy.ops.import_scene.gltf(filepath=input_obj_path)
 
@@ -82,7 +82,8 @@ def reduce_mesh(fname, decimate_type='DECIMATE', target_vertices=5000, smooth_ty
                 bpy.ops.object.shade_flat()
             
     # Export obj #
-    bpy.ops.export_scene.obj(filepath=output_path, use_selection=False)
+
+    bpy.ops.wm.obj_export(filepath=output_path)
 
 
 
