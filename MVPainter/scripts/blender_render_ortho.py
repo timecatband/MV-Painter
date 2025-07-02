@@ -278,7 +278,7 @@ def load_object(object_path: str) -> None:
     elif ext == '.blend':
         bpy.ops.wm.open_mainfile(filepath=object_path)
     elif ext == '.obj':
-        bpy.ops.import_scene.obj(filepath=object_path)
+        bpy.ops.wm.obj_import(filepath=object_path)
     elif ext == '.dae':
         bpy.ops.wm.collada_import(filepath=object_path)
     elif ext == '.ply':
