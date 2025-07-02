@@ -1,4 +1,4 @@
-from mvpainter_pipeline import MVPainter_Pipeline
+#from mvpainter_pipeline import MVPainter_Pipeline
 import os
 import trimesh
 import argparse
@@ -10,20 +10,21 @@ import numpy as np
 import torch
 from PIL import Image
 
-from differentiable_renderer.mesh_render import MeshRender
+from mvpainter.differentiable_renderer.mesh_render import MeshRender
 
-from uv_warp_utils import mesh_uv_wrap
+from mvpainter.uv_warp_utils import mesh_uv_wrap
 
 logger = logging.getLogger(__name__)
 parser = argparse.ArgumentParser()
-args, extra = parser.parse_known_args()
-parser.add_argument("--input_dir", default="")
-parser.add_argument("--save_dir",default="")
-parser.add_argument("--offset",default=0)
-parser.add_argument("--suffix",default="")
+
+if __name__ == "__main__":
+    parser.add_argument("--input_dir", default="")
+    parser.add_argument("--save_dir", default="")
+    parser.add_argument("--offset", default=0)
+    parser.add_argument("--suffix", default="")
+    args = parser.parse_args()
 
 
-args = parser.parse_args()
 def scale_image(img, scale=0.99):
     # 打开图像
     # img = Image.open(image_path)
@@ -198,11 +199,11 @@ class BakePipeline:
 
 
 
-pipeline = BakePipeline(offset=int(args.offset))
+
 
 
 if __name__ == "__main__":
-
+    pipeline = BakePipeline(offset=int(args.offset))
 
     dir_path = os.path.join('..',args.input_dir)
     save_path = os.path.join('..',args.save_dir)
@@ -217,7 +218,7 @@ if __name__ == "__main__":
         mesh = pipeline.call_bake(mesh,img_paths)
         mesh.export(os.path.join(save_path,casename+'.glb'))
         print("贴图完成: ", os.path.join(save_path,casename+'.glb'))
-        
-        
-        
-        
+
+
+
+

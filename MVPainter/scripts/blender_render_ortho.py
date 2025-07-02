@@ -1,4 +1,3 @@
-
 """
 Blender script to render images of 3D models.
 
@@ -268,21 +267,26 @@ def reset_scene() -> None:
 
 # load the glb model
 def load_object(object_path: str) -> None:
-    """Loads a glb model into the scene."""
-    print(object_path)
-    if object_path.endswith(".glb"):
+    """Loads a 3D model into the scene, supporting many file types."""
+    import os
+    print("Loading object:", object_path)
+    ext = os.path.splitext(object_path)[1].lower()
+    if ext in ['.glb', '.gltf']:
         bpy.ops.import_scene.gltf(filepath=object_path, merge_vertices=True)
-    elif object_path.endswith(".fbx"):
+    elif ext == '.fbx':
         bpy.ops.import_scene.fbx(filepath=object_path)
-    elif object_path.endswith(".blend"):
+    elif ext == '.blend':
         bpy.ops.wm.open_mainfile(filepath=object_path)
-    elif object_path.endswith(".obj"):
-        # import pdb;pdb.set_trace()
-        # bpy.ops.import_scene.obj(filepath=object_path)
-        bpy.ops.wm.obj_import(filepath=object_path)
+    elif ext == '.obj':
+        bpy.ops.import_scene.obj(filepath=object_path)
+    elif ext == '.dae':
+        bpy.ops.wm.collada_import(filepath=object_path)
+    elif ext == '.ply':
+        bpy.ops.import_mesh.ply(filepath=object_path)
+    elif ext == '.stl':
+        bpy.ops.import_mesh.stl(filepath=object_path)
     else:
-        print('-'+object_path+'-')
-        raise ValueError(f"Unsupported file type: {object_path}")
+        raise ValueError(f"Unsupported file type '{ext}': {object_path}")
 
 def get_valid_pbr(principled_bsdf):
 
@@ -836,4 +840,4 @@ if __name__ == "__main__":
 
         a = save_images(local_path)
 
-  
+

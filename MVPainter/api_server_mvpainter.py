@@ -105,6 +105,9 @@ def build_logger(logger_name, logger_filename):
 worker_id = str(uuid.uuid4())[:6]
 logger = build_logger("mvpainter_controller", f"{SAVE_DIR}/mvpainter_controller.log")
 
+# Global variables
+model_semaphore = None
+
 
 def load_image_from_base64(image):
     return Image.open(BytesIO(base64.b64decode(image)))
@@ -141,11 +144,13 @@ class MVPainterWorker:
                  unet_ckpt='/home/racarr/v29_25000.ckpt',
                  blender_path='/home/racarr/blender/blender',
                  device='cuda',
-                 seed=12):
+                 seed=12,
+                 limit_model_concurrency=5):
         self.worker_id = worker_id
         self.device = device
         self.blender_path = blender_path
         self.seed = seed
+        self.limit_model_concurrency = limit_model_concurrency
         
         # Set random seeds
         seed_everything(seed)
@@ -198,7 +203,7 @@ class MVPainterWorker:
         if model_semaphore is None:
             return 0
         else:
-            return args.limit_model_concurrency - model_semaphore._value + (len(
+            return self.limit_model_concurrency - model_semaphore._value + (len(
                 model_semaphore._waiters) if model_semaphore._waiters is not None else 0)
 
     def get_status(self):
@@ -222,12 +227,15 @@ class MVPainterWorker:
 
             if 'mesh' in params:
                 mesh_data = base64.b64decode(params["mesh"])
+                mesh_type = params.get('mesh_type', 'glb').lower()
+                print("Mesh type:", mesh_type)
                 # Save mesh to temporary file
-                with tempfile.NamedTemporaryFile(suffix='.glb', delete=False) as temp_file:
+                with tempfile.NamedTemporaryFile(suffix=f'.{mesh_type}', delete=False) as temp_file:
                     temp_file.write(mesh_data)
                     obj_path = temp_file.name
             else:
                 raise ValueError("No input mesh provided")
+            print("Wrote mesh to temporary file:", obj_path)
 
             # Get parameters with defaults
             geo_rotation = params.get('geo_rotation', -90)
@@ -275,10 +283,18 @@ class MVPainterWorker:
         # Run Blender rendering
         logger.info("Starting Blender rendering...")
         t0 = time.time()
+        # Create render_temp subdirectory for this object_uid
+        blender_obj_dir = os.path.join(RENDER_TEMP_DIR, object_uid)
+        os.makedirs(blender_obj_dir, exist_ok=True)
+        obj_extension = os.path.splitext(obj_path)[1].lower()
+        blender_obj_path = os.path.join(blender_obj_dir, f"{object_uid}.{obj_extension}")
+        shutil.copy(obj_path, blender_obj_path)
+        # Call Blender script, forcing output_dir to RENDER_TEMP_DIR
         cmds = [
             self.blender_path, '--background', '-Y',
             '--python', 'scripts/blender_render_ortho.py', '--',
-            '--object_path', obj_path,
+            '--object_path', blender_obj_path,
+            '--output_dir', RENDER_TEMP_DIR,
             '--geo_rotation', str(geo_rotation),
         ]
         subprocess.run(cmds, check=True)
@@ -296,17 +312,22 @@ class MVPainterWorker:
         return output_dir
 
     def process_depth_images(self, object_uid):
-        """Convert depth EXR images to PNG format"""
+        """Convert EXR depth images to PNG format"""
         depth_exr_dir = os.path.join(RENDER_TEMP_DIR, object_uid, "depth")
         depth_png_dir = os.path.join(RENDER_TEMP_DIR, object_uid, "depth_png")
         os.makedirs(depth_png_dir, exist_ok=True)
         
-        filenames = ['000.png', '005.png', '001.png', '004.png', '002.png', '003.png']
-        for i, filename in enumerate(filenames):
-            depth_exr_path = os.path.join(depth_exr_dir, f'{str(i).zfill(3)}.exr')
-            depth_png_path = os.path.join(depth_png_dir, f'{str(i).zfill(3)}.png')
-            if os.path.exists(depth_exr_path):
+        # Handle actual .exr files produced by Blender (e.g., '0050001.exr')
+        exr_files = [f for f in os.listdir(depth_exr_dir) if f.lower().endswith('.exr')]
+        for fname in sorted(exr_files):
+            # use first three characters as view index
+            view_idx = fname[:3]
+            depth_exr_path = os.path.join(depth_exr_dir, fname)
+            depth_png_path = os.path.join(depth_png_dir, f"{view_idx}.png")
+            try:
                 depth_exr_to_png(depth_exr_path, depth_png_path)
+            except Exception as e:
+                logger.warning(f"Failed to convert {depth_exr_path}: {e}")
 
     def generate_multiview_images(self, object_uid, reference_image, output_dir, 
                                  diffusion_steps, no_rembg):
@@ -558,7 +579,8 @@ if __name__ == "__main__":
         unet_ckpt=args.unet_ckpt,
         blender_path=args.blender_path,
         device=args.device,
-        seed=args.seed
+        seed=args.seed,
+        limit_model_concurrency=args.limit_model_concurrency
     )
     
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")

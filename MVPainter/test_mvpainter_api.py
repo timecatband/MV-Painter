@@ -22,10 +22,12 @@ def test_mvpainter_api(server_url, mesh_path, image_path,
     # Prepare the payload
     mesh_base64 = encode_file_to_base64(mesh_path)
     image_base64 = encode_file_to_base64(image_path)
+    mesh_type = mesh_path.split('.')[-1].lower()
     
     payload = {
         "mesh": mesh_base64,
         "image": image_base64,
+        "mesh_type": mesh_type,
         "geo_rotation": geo_rotation,
         "diffusion_steps": diffusion_steps,
         "use_pbr": use_pbr,
@@ -68,12 +70,15 @@ def test_async_api(server_url, mesh_path, image_path,
                   geo_rotation=-90, diffusion_steps=75, use_pbr=False):
     """Test the asynchronous API"""
     
+    # Prepare the payload
     mesh_base64 = encode_file_to_base64(mesh_path)
     image_base64 = encode_file_to_base64(image_path)
+    mesh_type = mesh_path.split('.')[-1].lower()
     
     payload = {
         "mesh": mesh_base64,
         "image": image_base64,
+        "mesh_type": mesh_type,
         "geo_rotation": geo_rotation,
         "diffusion_steps": diffusion_steps,
         "use_pbr": use_pbr,
